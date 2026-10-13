@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Anime Watchlist</title>
+<style>
+:root{--bg:#f3f1f7;--card:#fff;--ink:#1d1a2b;--mute:#7a7690;--line:#dcd8e8;--acc:#4b3fd1;--hl:#e8e5fb;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14121f;--card:#1e1b2e;--ink:#ece9fa;--mute:#9791b4;--line:#322e48;--acc:#9a8fff;--hl:#2b2750}}
+:root[data-theme="dark"]{--bg:#14121f;--card:#1e1b2e;--ink:#ece9fa;--mute:#9791b4;--line:#322e48;--acc:#9a8fff;--hl:#2b2750}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS",Verdana,sans-serif;line-height:1.4}
+main{max-width:560px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:1.6rem;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 16px;font-size:.9rem}
+form{display:flex;gap:8px;margin-bottom:16px}
+input[type=text]{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit}
+button{font:inherit;cursor:pointer}
+.add{padding:10px 16px;border:0;border-radius:8px;background:var(--acc);color:#fff}
+:root[data-theme="dark"] .add{color:#14121f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .add{color:#14121f}}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:6px;user-select:none;-webkit-user-select:none}
+li.drag{background:var(--hl);border-color:var(--acc);box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.n{width:1.8em;text-align:right;color:var(--mute);font-variant-numeric:tabular-nums}
+.h{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;touch-action:none;cursor:grab;color:var(--mute);font-size:1.3rem;line-height:1;border-radius:6px}
+.h:hover{background:var(--hl)}
+li.drag .h{cursor:grabbing}
+.mv{border:0;background:none;color:var(--mute);font-size:.7rem;padding:2px 4px}
+.mv:hover{color:var(--acc)}
+.t{flex:1;min-width:0;overflow-wrap:anywhere}
+li.done .t{text-decoration:line-through;color:var(--mute)}
+.x{border:0;background:none;color:var(--mute);font-size:1.2rem;padding:2px 6px}
+.x:hover,.x:focus-visible{color:#d33}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--acc)}
+</style>
+</head>
+<body>
+<main>
+<h1>Anime to watch</h1>
+<p class="sub">Drag the ⠿ handle (or use ▲ ▼) to reorder. Tick what you've finished.</p>
+<form id="f"><input type="text" id="in" placeholder="Add an anime" aria-label="Add an anime"><button class="add" type="submit">Add</button></form>
+<ul id="list"></ul>
+</main>
+<script>
+var KEY="anime-watchlist-v1";
+var DEF=["Naruto","One Piece","Fire Force Season 3","JJK Season 3","That Time I Got Reincarnated as a Slime","Berserk","Classroom of the Elite","Mob Psycho 100","Overlord","Hell's Paradise","Jobless Reincarnation","Elfen Lied","Attack on Titan","Welcome to Demon School! Iruma-kun","Skeleton Knight in Another World","Black Torch","Clevatess","Fairy Tail","Dragon Ball","The Seven Deadly Sins","Saga of Tanya the Evil","Kuroko's Basketball"].map(function(t){return{t:t,d:false}});
+var items=DEF;
+try{var s=localStorage.getItem(KEY);if(s)items=JSON.parse(s)}catch(e){}
+var list=document.getElementById("list");
+function save(){try{localStorage.setItem(KEY,JSON.stringify(items))}catch(e){}}
+function render(){
+  list.innerHTML="";
+  items.forEach(function(it,i){
+    var li=document.createElement("li");li.className=it.d?"done":"";li.dataset.i=i;
+    li.innerHTML='<span class="h" title="Drag to reorder">⠿</span><span class="n"></span><input type="checkbox" aria-label="Watched"><span class="t"></span><button class="mv up" aria-label="Move up">▲</button><button class="mv dn" aria-label="Move down">▼</button><button class="x" aria-label="Remove">×</button>';
+    li.querySelector(".t").textContent=it.t;
+    var cb=li.querySelector("input");cb.checked=it.d;
+    cb.onchange=function(){it.d=cb.checked;li.className=it.d?"done":"";save()};
+    li.querySelector(".x").onclick=function(){items.splice(items.indexOf(it),1);save();render()};
+    li.querySelector(".up").onclick=function(){move(it,-1)};
+    li.querySelector(".dn").onclick=function(){move(it,1)};
+    li.querySelector(".h").addEventListener("pointerdown",function(e){startDrag(e,li)});
+    list.appendChild(li);
+  });
+  numbers();
+}
+function numbers(){[].forEach.call(list.children,function(li,i){li.querySelector(".n").textContent=i+1})}
+function move(it,d){var i=items.indexOf(it),j=i+d;if(j<0||j>=items.length)return;items.splice(i,1);items.splice(j,0,it);save();render()}
+function startDrag(e,li){
+  if(e.button!==undefined&&e.button!==0)return;
+  e.preventDefault();li.classList.add("drag");
+  function onMove(ev){
+    ev.preventDefault();
+    var sibs=[].filter.call(list.children,function(c){return c!==li});
+    var before=null;
+    for(var k=0;k<sibs.length;k++){
+      var r=sibs[k].getBoundingClientRect();
+      if(ev.clientY<r.top+r.height/2){before=sibs[k];break}
+    }
+    if(before){if(li.nextSibling!==before)list.insertBefore(li,before)}
+    else if(list.lastChild!==li)list.appendChild(li);
+    numbers();
+    if(ev.clientY<60)window.scrollBy(0,-12);else if(ev.clientY>innerHeight-60)window.scrollBy(0,12);
+  }
+  function onUp(){
+    window.removeEventListener("pointermove",onMove);
+    window.removeEventListener("pointerup",onUp);
+    window.removeEventListener("pointercancel",onUp);
+    li.classList.remove("drag");
+    items=[].map.call(list.children,function(c){return items[+c.dataset.i]});
+    save();render();
+  }
+  window.addEventListener("pointermove",onMove,{passive:false});
+  window.addEventListener("pointerup",onUp);
+  window.addEventListener("pointercancel",onUp);
+}
+document.getElementById("f").onsubmit=function(e){
+  e.preventDefault();var inp=document.getElementById("in"),v=inp.value.trim();
+  if(!v)return;items.push({t:v,d:false});inp.value="";save();render();
+};
+render();
+</script>
+</body>
+</html>
